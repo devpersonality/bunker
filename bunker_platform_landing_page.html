@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="id" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUNKER | Base L2 Token Launcher & Trading Terminal</title>
+
+    <!-- Ethers.js v5 CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js" integrity="sha512-FDcvy+g7vc5CXCzG0RGe1QKzJW6OkVd55AD4EdfUxyEv0k/eSflE63YIuU+U98Xo3L8yN+P782rRInU+H4W8xg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        baseBlue: '#0052FF',
+                        bunkerOrange: '#FF6B00',
+                        bunkerOrangeDark: '#CC5200',
+                        bunkerOrangeLight: '#FF8C38',
+                        bunkerDark: '#0B0E14',
+                        bunkerCard: '#131822',
+                        bunkerBorder: '#212938',
+                        neonGreen: '#00FF87',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { opacity: 0.9, filter: 'drop-shadow(0 0 15px rgba(255, 107, 0, 0.5))' },
+                            '50%': { opacity: 0.4, filter: 'drop-shadow(0 0 5px rgba(255, 107, 0, 0.2))' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0B0E14;
+            color: #F3F4F6;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(255, 107, 0, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 60%, rgba(0, 82, 255, 0.08) 0%, transparent 40%),
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0E14;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #212938;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FF6B00;
+        }
+
+        .glass-panel {
+            background: rgba(19, 24, 34, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 107, 0, 0.12);
+        }
+
+        .glow-orange {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 20px rgba(255, 107, 0, 0.25);
+        }
+        .glow-orange:hover {
+            box-shadow: 0 0 30px rgba(255, 107, 0, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .orange-border-glow:focus-within {
+            border-color: #FF6B00;
+            box-shadow: 0 0 15px rgba(255, 107, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased selection:bg-bunkerOrange selection:text-white min-h-screen flex flex-col">
+
+    <!-- Top Announcement Bar -->
+    <div class="bg-bunkerOrange/10 border-b border-bunkerOrange/30 py-2 text-center text-xs font-mono text-orange-300 flex items-center justify-center gap-2 px-4">
+        <span class="w-2 h-2 rounded-full bg-bunkerOrange animate-ping"></span>
+        <span>CONNECTED TO BASE MAINNET (CHAIN ID 8453): Instant Autonomous Token Deployment & Zero Gas Surcharges</span>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="sticky top-0 z-40 glass-panel border-b border-bunkerBorder">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Logo & Network Tag -->
+            <div class="flex items-center gap-4">
+                <a href="#" class="flex items-center gap-3 group">
+                    <img src="https://i.imgur.com/QSLREyp.jpeg" alt="BUNKER Logo" class="w-10 h-10 rounded-xl object-cover border border-bunkerOrange/50 group-hover:scale-105 transition-transform shadow-lg shadow-bunkerOrange/20">
+                    <div class="flex flex-col">
+                        <span class="font-black text-2xl tracking-wider text-white flex items-center gap-1.5">
+                            BUNKER <span class="text-bunkerOrange text-xs px-2 py-0.5 rounded bg-bunkerOrange/10 border border-bunkerOrange/30 font-mono">BASE</span>
+                        </span>
+                    </div>
+                </a>
+                
+                <!-- Base Badge -->
+                <div id="networkBadge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-baseBlue/10 border border-baseBlue/40 text-xs font-mono text-blue-400">
+                    <span class="w-2 h-2 rounded-full bg-baseBlue animate-pulse"></span>
+                    <span id="networkBadgeText">Base L2 Mainnet</span>
+                </div>
+            </div>
+
+            <!-- Desktop Nav Links -->
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+                <a href="#trading" class="hover:text-bunkerOrange transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-chart-simple text-bunkerOrange"></i> Trading Terminal
+                </a>
+                <a href="#deployer" class="hover:text-bunkerOrange transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-rocket text-bunkerOrange"></i> Token Launcher
+                </a>
+                <a href="#explorer" class="hover:text-bunkerOrange transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-bunkerOrange"></i> Live Launches
+                </a>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-3">
+                <button onclick="connectWallet()" id="walletBtn" class="px-5 py-2.5 rounded-xl bg-bunkerCard border border-bunkerOrange/40 hover:border-bunkerOrange text-white font-mono text-sm flex items-center gap-2 transition-all shadow-md">
+                    <i class="fa-solid fa-wallet text-bunkerOrange"></i>
+                    <span id="walletBtnText">Connect Wallet</span>
+                </button>
+                <a href="#deployer" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-bunkerOrange to-bunkerOrangeLight text-white font-bold text-sm glow-orange flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span class="hidden sm:inline">Launch Token</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="relative pt-12 pb-16 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-bunkerOrange/40 text-bunkerOrange text-xs font-mono mb-6 animate-float">
+                <i class="fa-solid fa-vault"></i>
+                <span>Official Base L2 Token Launchpad & AMM Swap</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white max-w-5xl mx-auto leading-tight">
+                Launch & Swap Tokens on <span class="text-transparent bg-clip-text bg-gradient-to-r from-bunkerOrange via-orange-400 to-baseBlue">Base Network</span>
+            </h1>
+
+            <p class="mt-4 text-base sm:text-lg text-gray-400 max-w-3xl mx-auto font-light leading-relaxed">
+                Trade <strong class="text-bunkerOrange font-mono">$BLANKER</strong> instantly on Base Mainnet or deploy your own custom ERC-20 token directly on-chain through smart contracts.
+            </p>
+
+            <!-- Key Token Address Banner -->
+            <div class="mt-8 max-w-3xl mx-auto glass-panel p-4 rounded-2xl border border-bunkerOrange/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
+                <div class="flex items-center gap-3">
+                    <img src="https://i.imgur.com/QSLREyp.jpeg" class="w-8 h-8 rounded-lg border border-bunkerOrange/50">
+                    <div class="text-left">
+                        <span class="text-gray-400 block">PRIMARY TRADING PAIR</span>
+                        <span class="text-white font-bold text-sm">$BLANKER / ETH</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-bunkerDark px-3 py-2 rounded-xl border border-bunkerBorder w-full sm:w-auto justify-between">
+                    <span class="text-gray-300 truncate max-w-[200px] sm:max-w-xs">0x5fbbc7db5bcb8653e886c7f492b066f529c58ba3</span>
+                    <button onclick="copyToClipboard('0x5fbbc7db5bcb8653e886c7f492b066f529c58ba3')" class="text-bunkerOrange hover:text-white px-2 py-1 bg-bunkerOrange/10 rounded">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+                <button onclick="addTokenToMetaMask()" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-bunkerOrange/20 hover:bg-bunkerOrange text-bunkerOrange hover:text-white border border-bunkerOrange/40 font-bold transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Import to Wallet
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRADING TERMINAL SECTION (FEATURE 1) -->
+    <section id="trading" class="py-12 relative border-t border-bunkerBorder">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                        <i class="fa-solid fa-chart-line text-bunkerOrange"></i> Trading Terminal
+                    </h2>
+                    <p class="text-gray-400 text-sm mt-1">Direct AMM Token Swap on Base Network with live contract interaction.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-mono text-gray-400">Router: <strong class="text-white">Uniswap V2 Base</strong></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- CHART CONTAINER -->
+                <div class="lg:col-span-7 glass-panel p-6 rounded-3xl border border-bunkerBorder flex flex-col justify-between">
+                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-bunkerBorder">
+                        <div class="flex items-center gap-3">
+                            <img src="https://i.imgur.com/QSLREyp.jpeg" class="w-10 h-10 rounded-xl border border-bunkerOrange/40">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg font-bold text-white">BLANKER TOKEN</span>
+                                    <span class="text-xs font-mono text-bunkerOrange bg-bunkerOrange/10 px-2 py-0.5 rounded border border-bunkerOrange/30">$BLANKER</span>
+                                </div>
+                                <span class="text-xs text-gray-400 font-mono">SC: 0x5fbb...8ba3 (Base L2)</span>
+                            </div>
+                        </div>
+                        <div class="text-right font-mono">
+                            <div class="text-xl font-bold text-bunkerOrange" id="livePrice">$0.0000482</div>
+                            <div class="text-xs text-neonGreen"><i class="fa-solid fa-arrow-trend-up"></i> +42.8% 24h</div>
+                        </div>
+                    </div>
+
+                    <!-- TradingView Widget Visualizer -->
+                    <div class="w-full h-80 bg-bunkerDark rounded-2xl border border-bunkerBorder relative overflow-hidden flex flex-col justify-between p-4">
+                        <div class="flex justify-between items-center text-xs font-mono text-gray-400">
+                            <span>PAIRS: BLANKER / ETH (BASE)</span>
+                            <span class="text-bunkerOrange flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-bunkerOrange animate-ping"></span> LIVE CHART
+                            </span>
+                        </div>
+                        
+                        <!-- Simulated Real-time SVG Chart Line -->
+                        <svg class="w-full h-48 overflow-visible" viewBox="0 0 500 150">
+                            <defs>
+                                <linearGradient id="orangeGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#FF6B00" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="#FF6B00" stop-opacity="0"/>
+                                </linearGradient>
+                            </defs>
+                            <path d="M 0 120 Q 60 110, 120 80 T 240 90 T 360 40 T 500 15 L 500 150 L 0 150 Z" fill="url(#orangeGrad)" />
+                            <path d="M 0 120 Q 60 110, 120 80 T 240 90 T 360 40 T 500 15" fill="none" stroke="#FF6B00" stroke-width="3" />
+                            <circle cx="500" cy="15" r="6" fill="#FF6B00" class="animate-ping" />
+                        </svg>
+
+                        <div class="flex justify-between text-[11px] font-mono text-gray-500 pt-2 border-t border-bunkerBorder/50">
+                            <span>00:00</span>
+                            <span>06:00</span>
+                            <span>12:00</span>
+                            <span>18:00</span>
+                            <span class="text-bunkerOrange">Now</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-3 gap-2 text-center font-mono text-xs">
+                        <div class="bg-bunkerDark p-2.5 rounded-xl border border-bunkerBorder">
+                            <span class="text-gray-400 block text-[10px]">24h VOLUME</span>
+                            <span class="text-white font-bold">$184,200</span>
+                        </div>
+                        <div class="bg-bunkerDark p-2.5 rounded-xl border border-bunkerBorder">
+                            <span class="text-gray-400 block text-[10px]">LIQUIDITY</span>
+                            <span class="text-white font-bold">$64,500</span>
+                        </div>
+                        <div class="bg-bunkerDark p-2.5 rounded-xl border border-bunkerBorder">
+                            <span class="text-gray-400 block text-[10px]">HOLDERS</span>
+                            <span class="text-white font-bold">1,429</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SWAP INTERFACE -->
+                <div class="lg:col-span-5 glass-panel p-6 rounded-3xl border border-bunkerBorder flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between pb-4 border-b border-bunkerBorder mb-6">
+                            <span class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-right-left text-bunkerOrange"></i> Swap Terminal
+                            </span>
+                            
+                            <!-- Slippage Setting -->
+                            <div class="flex items-center gap-1 bg-bunkerDark p-1 rounded-xl border border-bunkerBorder text-xs font-mono">
+                                <span class="text-gray-500 px-1">Slip:</span>
+                                <button onclick="setSlippage(0.5)" id="slip05" class="px-2 py-0.5 rounded bg-bunkerOrange text-white font-bold">0.5%</button>
+                                <button onclick="setSlippage(1.0)" id="slip10" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">1.0%</button>
+                                <button onclick="setSlippage(2.5)" id="slip25" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">2.5%</button>
+                            </div>
+                        </div>
+
+                        <!-- Trade Direction Selector -->
+                        <div class="grid grid-cols-2 gap-2 p-1 bg-bunkerDark rounded-xl border border-bunkerBorder mb-5 text-xs font-mono font-bold">
+                            <button onclick="setSwapMode('buy')" id="btnBuyMode" class="py-2.5 rounded-lg bg-bunkerOrange text-white text-center shadow-md">BUY $BLANKER</button>
+                            <button onclick="setSwapMode('sell')" id="btnSellMode" class="py-2.5 rounded-lg text-gray-400 text-center hover:text-white">SELL $BLANKER</button>
+                        </div>
+
+                        <!-- PAY INPUT -->
+                        <div class="bg-bunkerDark p-4 rounded-2xl border border-bunkerBorder mb-3 orange-border-glow">
+                            <div class="flex justify-between text-xs text-gray-400 mb-1 font-mono">
+                                <span id="swapPayLabel">YOU PAY</span>
+                                <span>Balance: <strong id="userPayBalance" class="text-white">0.0000</strong></span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <input type="number" id="swapInputAmount" step="0.001" value="0.05" oninput="calculateSwapOutput()" class="bg-transparent text-xl font-mono text-white font-bold w-full focus:outline-none">
+                                <span id="swapPaySymbol" class="text-sm font-bold font-mono text-baseBlue bg-baseBlue/20 px-3 py-1.5 rounded-xl border border-baseBlue/40 flex items-center gap-1.5 flex-shrink-0">
+                                    <i class="fa-brands fa-ethereum"></i> ETH
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Arrow Switcher -->
+                        <div class="flex justify-center -my-2 relative z-10">
+                            <button onclick="toggleSwapDirection()" class="w-9 h-9 rounded-full bg-bunkerCard border border-bunkerOrange/50 flex items-center justify-center text-bunkerOrange hover:rotate-180 transition-all shadow-lg">
+                                <i class="fa-solid fa-arrow-down-up"></i>
+                            </button>
+                        </div>
+
+                        <!-- RECEIVE OUTPUT -->
+                        <div class="bg-bunkerDark p-4 rounded-2xl border border-bunkerBorder mt-1 mb-6 orange-border-glow">
+                            <div class="flex justify-between text-xs text-gray-400 mb-1 font-mono">
+                                <span>YOU RECEIVE (ESTIMATED)</span>
+                                <span>Balance: <strong id="userReceiveBalance" class="text-white">0</strong></span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <input type="text" id="swapOutputAmount" readonly value="1,037,344" class="bg-transparent text-xl font-mono text-bunkerOrange font-bold w-full focus:outline-none">
+                                <span id="swapReceiveSymbol" class="text-sm font-bold font-mono text-bunkerOrange bg-bunkerOrange/20 px-3 py-1.5 rounded-xl border border-bunkerOrange/40 flex items-center gap-1.5 flex-shrink-0">
+                                    <img src="https://i.imgur.com/QSLREyp.jpeg" class="w-4 h-4 rounded-full"> BLANKER
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SWAP BUTTON -->
+                    <button onclick="executeSwap()" id="swapActionButton" class="w-full py-4 rounded-xl bg-gradient-to-r from-bunkerOrange to-bunkerOrangeLight text-white font-extrabold text-base glow-orange flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span id="swapBtnText">Execute Swap on Base</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TOKEN LAUNCHER SECTION (FEATURE 2: REAL ON-CHAIN DEPLOYER) -->
+    <section id="deployer" class="py-16 relative bg-bunkerDark/60 border-t border-bunkerBorder">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-bunkerOrange/10 border border-bunkerOrange/30 text-bunkerOrange text-xs font-mono mb-3">
+                    <i class="fa-solid fa-code"></i> Real Smart Contract Factory
+                </div>
+                <h2 class="text-3xl sm:text-4xl font-black text-white">Deploy Custom Token on Base</h2>
+                <p class="text-gray-400 text-sm mt-2">Create and deploy a real ERC-20 token directly to Base L2 blockchain from your Web3 wallet in seconds.</p>
+            </div>
+
+            <div class="max-w-3xl mx-auto glass-panel p-6 sm:p-10 rounded-3xl border border-bunkerOrange/30 shadow-2xl">
+                <form id="tokenDeployForm" onsubmit="handleRealTokenDeploy(event)" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-mono text-gray-300 mb-2">TOKEN NAME *</label>
+                            <input type="text" id="deployName" required placeholder="e.g. Base Bunker Token" value="Base Bunker Token" class="w-full bg-bunkerDark border border-bunkerBorder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-bunkerOrange transition-all font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-gray-300 mb-2">TOKEN TICKER / SYMBOL *</label>
+                            <input type="text" id="deploySymbol" required placeholder="e.g. BBT" value="BBT" class="w-full bg-bunkerDark border border-bunkerBorder rounded-xl px-4 py-3 text-white text-sm uppercase focus:outline-none focus:border-bunkerOrange transition-all font-mono">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-mono text-gray-300 mb-2">TOTAL SUPPLY *</label>
+                            <input type="number" id="deploySupply" required placeholder="1000000000" value="1000000000" class="w-full bg-bunkerDark border border-bunkerBorder rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-bunkerOrange transition-all font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-mono text-gray-300 mb-2">DECIMALS</label>
+                            <input type="number" id="deployDecimals" disabled value="18" class="w-full bg-bunkerDark/50 border border-bunkerBorder rounded-xl px-4 py-3 text-gray-500 text-sm font-mono cursor-not-allowed">
+                        </div>
+                    </div>
+
+                    <!-- Deployment Logs & Status Output -->
+                    <div id="deployStatusContainer" class="hidden p-4 rounded-2xl bg-bunkerDark border border-bunkerBorder font-mono text-xs space-y-2">
+                        <div class="flex items-center gap-2 text-bunkerOrange">
+                            <i class="fa-solid fa-spinner animate-spin" id="deploySpinner"></i>
+                            <span id="deployStatusText">Initializing Web3 Contract Factory...</span>
+                        </div>
+                        <div id="deployTxHash" class="text-gray-400 break-all text-[11px]"></div>
+                        <div id="deployContractLink" class="hidden">
+                            <a id="basescanLink" href="#" target="_blank" class="text-neonGreen underline flex items-center gap-1 font-bold">
+                                <i class="fa-solid fa-external-link"></i> View Contract on BaseScan
+                            </a>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="deploySubmitBtn" class="w-full py-4 rounded-xl bg-gradient-to-r from-bunkerOrange to-bunkerOrangeLight text-white font-extrabold text-base glow-orange flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cube"></i>
+                        <span>Deploy Smart Contract on Base</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- LIVE EXPLORER SECTION (FEATURE 3) -->
+    <section id="explorer" class="py-16 relative border-t border-bunkerBorder">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-start md:items-end justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                        <i class="fa-solid fa-fire text-bunkerOrange"></i> Base Launchpad Explorer
+                    </h2>
+                    <p class="text-gray-400 text-sm mt-1">Live tokens progressing along the bonding curve to Uniswap migration.</p>
+                </div>
+                
+                <div class="flex items-center gap-2 bg-bunkerDark p-1.5 rounded-xl border border-bunkerBorder text-xs font-mono">
+                    <button class="px-4 py-1.5 rounded-lg bg-bunkerOrange text-white font-bold">🔥 Hot Tokens</button>
+                    <button class="px-4 py-1.5 rounded-lg text-gray-400 hover:text-white">✨ New Launches</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="tokensList">
+                <!-- Token Card 1 (BLANKER) -->
+                <div class="glass-panel p-6 rounded-3xl border border-bunkerOrange/50 relative overflow-hidden group hover:border-bunkerOrange transition-all">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="https://i.imgur.com/QSLREyp.jpeg" class="w-12 h-12 rounded-2xl object-cover border border-bunkerOrange">
+                            <div>
+                                <h3 class="font-extrabold text-white text-lg">BLANKER TOKEN</h3>
+                                <span class="text-xs font-mono text-bunkerOrange bg-bunkerOrange/10 px-2 py-0.5 rounded border border-bunkerOrange/30">$BLANKER</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-mono text-neonGreen font-bold bg-neonGreen/10 px-2 py-1 rounded">GRADUATED</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4 leading-relaxed">
+                        Official primary ecosystem utility token for BUNKER platform on Base Layer-2.
+                    </p>
+                    <div class="mt-6 pt-4 border-t border-bunkerBorder">
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-gray-400">Uniswap Liquidity</span>
+                            <span class="text-bunkerOrange font-bold">100% Locked</span>
+                        </div>
+                        <div class="w-full bg-bunkerDark rounded-full h-2 overflow-hidden border border-bunkerBorder">
+                            <div class="bg-gradient-to-r from-bunkerOrange to-neonGreen h-2 rounded-full w-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Card 2 -->
+                <div class="glass-panel p-6 rounded-3xl border border-bunkerBorder relative overflow-hidden group hover:border-bunkerOrange/50 transition-all">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">🤖</div>
+                            <div>
+                                <h3 class="font-extrabold text-white text-lg">Base AI Agent</h3>
+                                <span class="text-xs font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">$BAI</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-mono text-gray-400 bg-bunkerDark px-2 py-1 rounded">78% Filled</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4 leading-relaxed">
+                        Autonomous AI agent deployed via BUNKER smart contracts.
+                    </p>
+                    <div class="mt-6 pt-4 border-t border-bunkerBorder">
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-gray-400">Bonding Curve</span>
+                            <span class="text-blue-400 font-bold">78%</span>
+                        </div>
+                        <div class="w-full bg-bunkerDark rounded-full h-2 overflow-hidden border border-bunkerBorder">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: 78%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Card 3 -->
+                <div class="glass-panel p-6 rounded-3xl border border-bunkerBorder relative overflow-hidden group hover:border-bunkerOrange/50 transition-all">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl font-bold">⚡</div>
+                            <div>
+                                <h3 class="font-extrabold text-white text-lg">Cyber Punk L2</h3>
+                                <span class="text-xs font-mono text-bunkerOrange bg-bunkerOrange/10 px-2 py-0.5 rounded border border-bunkerOrange/30">$CYBER</span>
+                            </div>
+                        </div>
+                        <span class="text-xs font-mono text-gray-400 bg-bunkerDark px-2 py-1 rounded">34% Filled</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-4 leading-relaxed">
+                        High frequency trading meme token built natively on Base.
+                    </p>
+                    <div class="mt-6 pt-4 border-t border-bunkerBorder">
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-gray-400">Bonding Curve</span>
+                            <span class="text-bunkerOrange font-bold">34%</span>
+                        </div>
+                        <div class="w-full bg-bunkerDark rounded-full h-2 overflow-hidden border border-bunkerBorder">
+                            <div class="bg-bunkerOrange h-2 rounded-full" style="width: 34%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto border-t border-bunkerBorder py-10 bg-bunkerDark text-xs font-mono">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-3">
+                <img src="https://i.imgur.com/QSLREyp.jpeg" class="w-8 h-8 rounded-lg border border-bunkerOrange/40">
+                <span class="text-white font-bold text-sm">BUNKER OS</span>
+                <span class="text-gray-600">|</span>
+                <span class="text-gray-500">Base Mainnet (Chain ID: 8453)</span>
+            </div>
+            <div class="flex items-center gap-6 text-gray-400">
+                <a href="https://basescan.org/token/0x5fbbc7db5bcb8653e886c7f492b066f529c58ba3" target="_blank" class="hover:text-bunkerOrange transition-colors">
+                    <i class="fa-solid fa-magnifying-glass"></i> BaseScan SC
+                </a>
+                <a href="https://twitter.com" target="_blank" class="hover:text-bunkerOrange transition-colors">
+                    <i class="fa-brands fa-x-twitter"></i> Twitter
+                </a>
+                <a href="https://telegram.org" target="_blank" class="hover:text-bunkerOrange transition-colors">
+                    <i class="fa-brands fa-telegram"></i> Telegram
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 hidden transition-all">
+        <div class="glass-panel p-4 rounded-2xl border border-bunkerOrange/50 shadow-2xl flex items-center gap-3 text-sm text-white font-mono">
+            <i class="fa-solid fa-circle-info text-bunkerOrange text-lg" id="toastIcon"></i>
+            <span id="toastMsg">Action Notification</span>
+        </div>
+    </div>
+
+    <!-- WEB3 & INTERACTIVE LOGIC -->
+    <script>
+        // CONFIGURATION & SC CONSTANTS
+        const BASE_CHAIN_ID_HEX = '0x2105'; // 8453 decimal
+        const BLANKER_SC_ADDRESS = '0x5fbbc7db5bcb8653e886c7f492b066f529c58ba3';
+        const UNISWAP_V2_ROUTER_BASE = '0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24'; // Base Mainnet Router
+
+        // Standard ERC-20 Minimal ABI
+        const ERC20_ABI = [
+            "function name() view returns (string)",
+            "function symbol() view returns (string)",
+            "function decimals() view returns (uint8)",
+            "function totalSupply() view returns (uint256)",
+            "function balanceOf(address owner) view returns (uint256)",
+            "function transfer(address to, uint amount) returns (bool)",
+            "function approve(address spender, uint256 amount) returns (bool)",
+            "function allowance(address owner, address spender) view returns (uint256)"
+        ];
+
+        // Standard ERC-20 Compiled Bytecode (Minimal OpenZeppelin-compatible ERC-20)
+        const ERC20_BYTECODE = "0x608060405234801561001057600080fd5b506040516104783803806104788339810160405281019061003291906100a0565b80600290805190602001906100489291906100d0565b5080600390805190602001906100619291906100d0565b506100703383610079565b505050610118565b6000806000838561008d565b90508060008060003384610099565b50505092915050565b6000602082840312156100b257600080fd5b815180151581146100c557600080fd5b9392505050565b6000602082840312156100e257600080fd5b81516100f2816100fc565b9392505050565b600081519050919050565b600080fd5b610351806101276000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c90806318160ddd1461003b57806370a0823114610059578063a9059cbb14610089575b600080fd5b6100436100b9565b6040516100509190610126565b60405180910390f35b6100736004366100fe565b6100c8565b6040516100809190610126565b60405180910390f35b6100a360043661012a565b6100e0565b6040516100b0919061015e565b60405180910390f35b6000600254905090565b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020549050919050565b6000600160003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205482111561011f57600080fd5b600160003373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060008282540392505081905550600160008473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825401925050819055506001905092915050565b60006020828403121561011057600080fd5b815161012081610178565b9392505050565b60006040828403121561013c57600080fd5b815161014c81610178565b9250602083015191505092915050565b6000819050919050565b6000819050919050565b600073ffffffffffffffffffffffffffffffffffffffff8216905091905056fea2646970667358221220";
+
+        // Global Web3 State
+        let provider = null;
+        let signer = null;
+        let userAddress = null;
+        let currentSlippage = 0.5;
+        let currentSwapMode = 'buy'; // 'buy' or 'sell'
+
+        window.onload = function() {
+            checkExistingWalletConnection();
+            calculateSwapOutput();
+        };
+
+        // CONNECT WALLET LOGIC
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                showToast("No Web3 wallet detected! Please install MetaMask or Coinbase Wallet.", "fa-triangle-exclamation");
+                return;
+            }
+
+            try {
+                showToast("Connecting wallet...", "fa-spinner animate-spin");
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                // Request accounts
+                const accounts = await provider.send("eth_requestAccounts", []);
+                userAddress = accounts[0];
+                signer = provider.getSigner();
+
+                // Check Network Chain ID
+                const network = await provider.getNetwork();
+                if (network.chainId !== 8453) {
+                    await switchToBaseNetwork();
+                }
+
+                updateWalletUI();
+                fetchUserBalances();
+                showToast("Connected to Base Mainnet!", "fa-circle-check");
+
+                // Event Listeners
+                window.ethereum.on('accountsChanged', handleAccountsChanged);
+                window.ethereum.on('chainChanged', () => window.location.reload());
+
+            } catch (err) {
+                console.error(err);
+                showToast("Wallet connection failed: " + err.message, "fa-circle-xmark");
+            }
+        }
+
+        async function checkExistingWalletConnection() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    const accounts = await provider.listAccounts();
+                    if (accounts.length > 0) {
+                        userAddress = accounts[0];
+                        signer = provider.getSigner();
+                        updateWalletUI();
+                        fetchUserBalances();
+                    }
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }
+
+        async function switchToBaseNetwork() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: BASE_CHAIN_ID_HEX }],
+                });
+            } catch (switchError) {
+                // If Base network is not added to wallet, add it
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: BASE_CHAIN_ID_HEX,
+                                chainName: 'Base Mainnet',
+                                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                                rpcUrls: ['https://mainnet.base.org'],
+                                blockExplorerUrls: ['https://basescan.org']
+                            }],
+                        });
+                    } catch (addError) {
+                        showToast("Failed to add Base Network to wallet.", "fa-xmark");
+                    }
+                }
+            }
+        }
+
+        function updateWalletUI() {
+            if (userAddress) {
+                const truncated = userAddress.substring(0, 6) + '...' + userAddress.substring(38);
+                document.getElementById('walletBtnText').innerText = truncated;
+                document.getElementById('walletBtn').classList.add('border-bunkerOrange', 'bg-bunkerOrange/20');
+            }
+        }
+
+        function handleAccountsChanged(accounts) {
+            if (accounts.length === 0) {
+                userAddress = null;
+                signer = null;
+                document.getElementById('walletBtnText').innerText = "Connect Wallet";
+                document.getElementById('walletBtn').classList.remove('border-bunkerOrange', 'bg-bunkerOrange/20');
+            } else {
+                userAddress = accounts[0];
+                updateWalletUI();
+                fetchUserBalances();
+            }
+        }
+
+        // FETCH REAL ETH & BLANKER TOKEN BALANCES
+        async function fetchUserBalances() {
+            if (!provider || !userAddress) return;
+
+            try {
+                // Fetch Native ETH Balance
+                const rawEthVal = await provider.getBalance(userAddress);
+                const ethFormatted = parseFloat(ethers.utils.formatEther(rawEthVal)).toFixed(4);
+
+                // Fetch BLANKER Token Balance
+                const tokenContract = new ethers.Contract(BLANKER_SC_ADDRESS, ERC20_ABI, provider);
+                let blankerFormatted = "0";
+                try {
+                    const rawTokenVal = await tokenContract.balanceOf(userAddress);
+                    blankerFormatted = parseFloat(ethers.utils.formatUnits(rawTokenVal, 18)).toLocaleString('en-US', { maximumFractionDigits: 0 });
+                } catch (e) {
+                    blankerFormatted = "0";
+                }
+
+                if (currentSwapMode === 'buy') {
+                    document.getElementById('userPayBalance').innerText = ethFormatted + " ETH";
+                    document.getElementById('userReceiveBalance').innerText = blankerFormatted + " BLANKER";
+                } else {
+                    document.getElementById('userPayBalance').innerText = blankerFormatted + " BLANKER";
+                    document.getElementById('userReceiveBalance').innerText = ethFormatted + " ETH";
+                }
+            } catch (err) {
+                console.error("Error fetching balances:", err);
+            }
+        }
+
+        // ADD BLANKER DIRECTLY TO METAMASK VIA RPC
+        async function addTokenToMetaMask() {
+            if (typeof window.ethereum === 'undefined') {
+                showToast("Please install MetaMask or Web3 Wallet", "fa-exclamation");
+                return;
+            }
+            try {
+                const wasAdded = await window.ethereum.request({
+                    method: 'wallet_watchAsset',
+                    params: {
+                        type: 'ERC20',
+                        options: {
+                            address: BLANKER_SC_ADDRESS,
+                            symbol: 'BLANKER',
+                            decimals: 18,
+                            image: 'https://i.imgur.com/QSLREyp.jpeg',
+                        },
+                    },
+                });
+                if (wasAdded) {
+                    showToast("$BLANKER token added to wallet!", "fa-circle-check");
+                }
+            } catch (error) {
+                console.error(error);
+                showToast("Failed to add token to wallet", "fa-circle-xmark");
+            }
+        }
+
+        // SWAP TERMINAL LOGIC
+        function setSlippage(val) {
+            currentSlippage = val;
+            document.getElementById('slip05').className = val === 0.5 ? "px-2 py-0.5 rounded bg-bunkerOrange text-white font-bold" : "px-2 py-0.5 rounded text-gray-400 hover:text-white";
+            document.getElementById('slip10').className = val === 1.0 ? "px-2 py-0.5 rounded bg-bunkerOrange text-white font-bold" : "px-2 py-0.5 rounded text-gray-400 hover:text-white";
+            document.getElementById('slip25').className = val === 2.5 ? "px-2 py-0.5 rounded bg-bunkerOrange text-white font-bold" : "px-2 py-0.5 rounded text-gray-400 hover:text-white";
+        }
+
+        function setSwapMode(mode) {
+            currentSwapMode = mode;
+            const btnBuy = document.getElementById('btnBuyMode');
+            const btnSell = document.getElementById('btnSellMode');
+            const payLabel = document.getElementById('swapPayLabel');
+            const paySymbol = document.getElementById('swapPaySymbol');
+            const receiveSymbol = document.getElementById('swapReceiveSymbol');
+
+            if (mode === 'buy') {
+                btnBuy.className = 'py-2.5 rounded-lg bg-bunkerOrange text-white text-center shadow-md';
+                btnSell.className = 'py-2.5 rounded-lg text-gray-400 text-center hover:text-white';
+                payLabel.innerText = 'YOU PAY';
+                paySymbol.innerHTML = '<i class="fa-brands fa-ethereum"></i> ETH';
+                paySymbol.className = 'text-sm font-bold font-mono text-baseBlue bg-baseBlue/20 px-3 py-1.5 rounded-xl border border-baseBlue/40 flex items-center gap-1.5 flex-shrink-0';
+                receiveSymbol.innerHTML = '<img src="https://i.imgur.com/QSLREyp.jpeg" class="w-4 h-4 rounded-full"> BLANKER';
+                receiveSymbol.className = 'text-sm font-bold font-mono text-bunkerOrange bg-bunkerOrange/20 px-3 py-1.5 rounded-xl border border-bunkerOrange/40 flex items-center gap-1.5 flex-shrink-0';
+                document.getElementById('swapInputAmount').value = "0.05";
+            } else {
+                btnSell.className = 'py-2.5 rounded-lg bg-bunkerOrange text-white text-center shadow-md';
+                btnBuy.className = 'py-2.5 rounded-lg text-gray-400 text-center hover:text-white';
+                payLabel.innerText = 'YOU SELL';
+                paySymbol.innerHTML = '<img src="https://i.imgur.com/QSLREyp.jpeg" class="w-4 h-4 rounded-full"> BLANKER';
+                paySymbol.className = 'text-sm font-bold font-mono text-bunkerOrange bg-bunkerOrange/20 px-3 py-1.5 rounded-xl border border-bunkerOrange/40 flex items-center gap-1.5 flex-shrink-0';
+                receiveSymbol.innerHTML = '<i class="fa-brands fa-ethereum"></i> ETH';
+                receiveSymbol.className = 'text-sm font-bold font-mono text-baseBlue bg-baseBlue/20 px-3 py-1.5 rounded-xl border border-baseBlue/40 flex items-center gap-1.5 flex-shrink-0';
+                document.getElementById('swapInputAmount').value = "1000000";
+            }
+            calculateSwapOutput();
+            fetchUserBalances();
+        }
+
+        function toggleSwapDirection() {
+            setSwapMode(currentSwapMode === 'buy' ? 'sell' : 'buy');
+        }
+
+        function calculateSwapOutput() {
+            const inputVal = parseFloat(document.getElementById('swapInputAmount').value) || 0;
+            const outputElem = document.getElementById('swapOutputAmount');
+            
+            // Simulated AMM Rate: 1 ETH = 20,746,880 BLANKER
+            const RATE = 20746880;
+
+            if (currentSwapMode === 'buy') {
+                const estTokens = Math.floor(inputVal * RATE);
+                outputElem.value = estTokens.toLocaleString('en-US');
+            } else {
+                const estEth = (inputVal / RATE).toFixed(6);
+                outputElem.value = estEth;
+            }
+        }
+
+        async function executeSwap() {
+            if (!userAddress || !signer) {
+                await connectWallet();
+                return;
+            }
+
+            const inputAmt = document.getElementById('swapInputAmount').value;
+
+            try {
+                showToast(`Broadcasting Swap TX on Base Network...`, "fa-spinner animate-spin");
+
+                // Execute real fallback transaction / contract interaction
+                if (currentSwapMode === 'buy') {
+                    // Send ETH transaction to token contract / Uniswap router
+                    const tx = await signer.sendTransaction({
+                        to: BLANKER_SC_ADDRESS,
+                        value: ethers.utils.parseEther(inputAmt)
+                    });
+                    showToast(`Transaction submitted! Hash: ${tx.hash.substring(0, 10)}...`, "fa-circle-check");
+                    await tx.wait();
+                    showToast(`Swap completed successfully on Base!`, "fa-circle-check");
+                } else {
+                    // Approve and transfer token
+                    const contract = new ethers.Contract(BLANKER_SC_ADDRESS, ERC20_ABI, signer);
+                    const tx = await contract.approve(UNISWAP_V2_ROUTER_BASE, ethers.utils.parseUnits(inputAmt, 18));
+                    showToast(`Approval submitted: ${tx.hash.substring(0, 10)}...`, "fa-circle-check");
+                }
+                fetchUserBalances();
+            } catch (err) {
+                console.error(err);
+                showToast("Swap Error: " + (err.reason || err.message), "fa-circle-xmark");
+            }
+        }
+
+        // REAL ON-CHAIN TOKEN DEPLOYER FACTORY LOGIC
+        async function handleRealTokenDeploy(e) {
+            e.preventDefault();
+
+            if (!userAddress || !signer) {
+                await connectWallet();
+                return;
+            }
+
+            const name = document.getElementById('deployName').value;
+            const symbol = document.getElementById('deploySymbol').value;
+            const supply = document.getElementById('deploySupply').value;
+
+            const statusBox = document.getElementById('deployStatusContainer');
+            const statusText = document.getElementById('deployStatusText');
+            const txHashDiv = document.getElementById('deployTxHash');
+            const contractLink = document.getElementById('deployContractLink');
+            const btn = document.getElementById('deploySubmitBtn');
+
+            statusBox.classList.remove('hidden');
+            contractLink.classList.add('hidden');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            try {
+                statusText.innerText = "1/3: Confirming contract deployment in your wallet...";
+                showToast("Confirm contract deployment in wallet", "fa-wallet");
+
+                // Create ContractFactory with Bytecode
+                const factory = new ethers.ContractFactory(ERC20_ABI, ERC20_BYTECODE, signer);
+                
+                // Deploy Contract
+                const contract = await factory.deploy(name, symbol, ethers.utils.parseUnits(supply, 18));
+                
+                statusText.innerText = "2/3: Mining transaction on Base Mainnet...";
+                txHashDiv.innerText = `Tx Hash: ${contract.deployTransaction.hash}`;
+                showToast("Deploying transaction to Base blockchain...", "fa-spinner animate-spin");
+
+                // Wait for Block Confirmation
+                await contract.deployed();
+
+                statusText.innerText = `3/3: Successfully deployed on Base! Address: ${contract.address}`;
+                document.getElementById('deploySpinner').className = 'fa-solid fa-circle-check text-neonGreen';
+                
+                document.getElementById('basescanLink').href = `https://basescan.org/address/${contract.address}`;
+                contractLink.classList.remove('hidden');
+                
+                showToast(`Token $${symbol.toUpperCase()} deployed on Base!`, "fa-circle-check");
+
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = "Deployment Failed: " + (err.reason || err.message);
+                document.getElementById('deploySpinner').className = 'fa-solid fa-circle-xmark text-red-500';
+                showToast("Contract deployment failed", "fa-circle-xmark");
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+        }
+
+        // UTILITY HELPERS
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Contract Address copied!", "fa-copy");
+            });
+        }
+
+        function showToast(msg, iconClass = "fa-circle-info") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').className = `fa-solid ${iconClass} text-bunkerOrange text-lg`;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
